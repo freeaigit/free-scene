@@ -26,5 +26,5 @@ The pipeline is identical to free.ai/video/movie/:
 from .config import Config
 from .pipeline import make_movie, MovieResult
 
-__version__ = "0.1.0"
+__version__ = "0.1.1"
 __all__ = ["make_movie", "Config", "MovieResult", "__version__"]

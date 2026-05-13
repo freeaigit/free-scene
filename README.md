@@ -44,9 +44,35 @@ sudo apt-get install ffmpeg
 winget install Gyan.FFmpeg
 ```
 
+## Cost upfront — be honest
+
+| What you're running                       | Tokens | Anon (2,500/day) | Registered (30,000/day) | $5 pack (200K) |
+|-------------------------------------------|--------|------------------|-------------------------|----------------|
+| **Single 2-second scene** (cheapest)      | 5,100  | 🚫               | ✅ 5/day                 | ~40 scenes     |
+| **Default 3-scene 3-second movie**        | 22,600 | 🚫               | ✅ **1 full movie/day**  | ~9 movies      |
+| **3-scene 4-second movie**                | 30,100 | 🚫               | 🚫 (100 over)           | ~6 movies      |
+| **5-scene 6-second movie**                | 75,100 | 🚫               | 🚫                      | ~2 movies      |
+
+Per-scene cost is `max(5,000, duration × 2,500)`. The CLI prints a cost
+estimate + affordability hint before each run; `--dry-run` shows it
+without spending.
+
+**Free tier sweet spot:** a [free.ai](https://free.ai/signup/) signup
+gets you **30,000 tokens/day** — exactly enough for one default 3-scene
+4-second movie every 24 hours, forever. For more, set `FREE_API_KEY` to
+your account credits, grab a $5 pack (200K tokens, ~6 movies), or run
+against your own GPU (see [supported backends](#supported-backends)) for
+$0.
+
 ## Quick start
 
-No setup required — point at Free.ai's hosted backend (subject to the daily anonymous pool):
+No setup required — try a dry run first to see the cost:
+
+```bash
+freescene "Cyberpunk Tokyo at dawn, a lone hacker on a rooftop" --scenes 5 --style scifi --dry-run
+```
+
+Render it for real (needs an API key or your own backend — see above):
 
 ```bash
 freescene "Cyberpunk Tokyo at dawn, a lone hacker on a rooftop" --scenes 5 --style scifi

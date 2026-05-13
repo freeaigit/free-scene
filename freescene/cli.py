@@ -18,6 +18,7 @@ from . import __version__
 from .concat import FFmpegMissingError
 from .config import Config
 from .pipeline import make_movie
+from .pricing import estimate as estimate_cost
 from .render import RenderError
 
 
@@ -45,8 +46,10 @@ _STYLE_PRESETS = {
                   + ", ".join(_STYLE_PRESETS.keys())
                   + ". Anything not listed is passed through verbatim."
               ))
-@click.option("-d", "--duration", type=click.IntRange(2, 12), default=4,
-              show_default=True, help="Seconds per scene clip.")
+@click.option("-d", "--duration", type=click.IntRange(2, 12), default=3,
+              show_default=True,
+              help=("Seconds per scene clip. The 3s default keeps a 3-scene "
+                    "movie under the 30K-token free daily pool."))
 @click.option("-m", "--video-model", default=None,
               help="Per-scene video model (env: VIDEO_MODEL).")
 @click.option("--llm-model", default=None,
@@ -59,6 +62,8 @@ _STYLE_PRESETS = {
               default=None, help="Output .mp4 path. Default: ./<job_id>.mp4")
 @click.option("--show-script", is_flag=True,
               help="Print the LLM-written scene prompts before rendering.")
+@click.option("--dry-run", is_flag=True,
+              help="Print the token-cost estimate and exit without rendering.")
 @click.option("--quiet", is_flag=True, help="Suppress progress UI.")
 @click.version_option(__version__, prog_name="freescene")
 def main(
@@ -72,6 +77,7 @@ def main(
     api_key: str | None,
     output: Path | None,
     show_script: bool,
+    dry_run: bool,
     quiet: bool,
 ) -> None:
     """Generate a multi-scene AI movie from a story idea.
@@ -108,6 +114,8 @@ def main(
         output = output.resolve()
         output.parent.mkdir(parents=True, exist_ok=True)
 
+    est = estimate_cost(num_scenes, duration)
+
     if not quiet:
         console.rule("[bold green]freescene")
         console.print(f"[dim]Idea:[/dim] {idea_str}")
@@ -121,6 +129,38 @@ def main(
             f"[dim]Video:[/dim] {cfg.video_model}  "
             f"[dim]Backend:[/dim] {cfg.effective_video_url}"
         )
+        _key_status = (
+            "[green]✓ API key set[/green]" if cfg.api_key
+            else "[yellow]⚠ anonymous (no API key)[/yellow]"
+        )
+        console.print(
+            f"[dim]Auth:[/dim] {_key_status}  "
+            f"[dim]Est. cost:[/dim] {est.total_tokens:,} tokens "
+            f"(~${est.usd_cost:.3f})"
+        )
+        console.print(f"[dim]Quota:[/dim] {est.hint}")
+
+    if dry_run:
+        if quiet:
+            click.echo(str(est.total_tokens))
+        else:
+            console.print("\n[bold]Dry run — exiting without rendering.[/bold]")
+        sys.exit(0)
+
+    # Soft warn before anonymous users hit a guaranteed 402 — they pip-
+    # installed, typed a command, and would otherwise watch the LLM call
+    # succeed before the first scene render fails with "out of tokens".
+    if not cfg.api_key and not est.affordable_with_anon and not quiet:
+        console.print(
+            "\n[bold yellow]Heads up:[/bold yellow] this request needs "
+            f"{est.total_tokens:,} tokens but the anonymous daily pool is only "
+            f"{2500:,}. The backend will return 402 Payment Required.\n"
+            "Set [bold]FREE_API_KEY[/bold] (sign up free at https://free.ai/signup/ for "
+            f"{5000:,} tokens/day, or buy a $5 pack for 200K tokens — about 40 scenes).\n"
+            "Re-run with [bold]--dry-run[/bold] to see the estimate without spending."
+        )
+        if not click.confirm("Proceed anyway?", default=False):
+            sys.exit(0)
 
     progress = None if quiet else Progress(
         SpinnerColumn(),

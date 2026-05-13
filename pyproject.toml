@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "freeai-scene"
-version = "0.1.0"
+version = "0.1.1"
 description = "Multi-scene AI movie maker — point at any OpenAI-compatible LLM + video API, get a stitched mp4."
 readme = "README.md"
 requires-python = ">=3.9"
